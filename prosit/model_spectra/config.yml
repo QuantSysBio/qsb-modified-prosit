@@ -1,0 +1,24 @@
+loss: masked_spectral_distance
+name: prosit1.0
+batch_size: 512
+prediction_type: intensity
+stream_type: normal
+optimizer: Adam
+lr: 0.0001 # with cyclic lrs this is just a placeholder which will be overwritten by the cyclic lr callback
+cyclic_lr:
+  max_lr: 0.0001 # decays in mode: exp_range
+  min_lr: 0.0000001 # the lower boundry of the lr. This boundry will never change during training
+  mode: exp_range # can be triangular, triangular2 or exp_range
+  decay_per_cycle: 0.95 # decay factor of max_lr with exp_range. 0.5 means that within one cycle the max lr will be halfed.
+  half_cycle_length: 4 # the number epochs while the learning rate ramps up or down.
+epochs: 1000
+early_stopping:
+  patience: 64 # number of epochs during which the loss must not improve
+  min_delta: 0.0000 # any "improvement" below this value is not an improvement.
+verbose: 1
+x:
+- sequence_integer
+- precursor_charge_onehot
+- collision_energy_aligned_normed
+y:
+- intensities_raw

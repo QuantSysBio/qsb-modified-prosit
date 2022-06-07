@@ -1,0 +1,11 @@
+loss: masked_spectral_distance
+name: mox_neat_attention_context
+optimizer: adam
+x:
+- sequence_integer
+y:
+- prediction
+prediction_type: iRT
+prediction_out: iRT_pred
+iRT_rescaling_mean: 56.35363441
+iRT_rescaling_var: 1883.0160689
