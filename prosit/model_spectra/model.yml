@@ -1,0 +1,356 @@
+backend: tensorflow
+class_name: Model
+config:
+  input_layers:
+  - [peptides_in, 0, 0]
+  - [precursor_charge_in, 0, 0]
+  - [collision_energy_in, 0, 0]
+  layers:
+  - class_name: InputLayer
+    config:
+      batch_input_shape: !!python/tuple [null, 30]
+      dtype: int32
+      name: peptides_in
+      sparse: false
+    inbound_nodes: []
+    name: peptides_in
+  - class_name: Embedding
+    config:
+      activity_regularizer: null
+      batch_input_shape: !!python/tuple [null, null]
+      dtype: float32
+      embeddings_constraint: null
+      embeddings_initializer:
+        class_name: RandomUniform
+        config: {maxval: 0.05, minval: -0.05, seed: null}
+      embeddings_regularizer: null
+      input_dim: 22
+      input_length: null
+      mask_zero: false
+      name: embedding
+      output_dim: 32
+      trainable: true
+    inbound_nodes:
+    - - - peptides_in
+        - 0
+        - 0
+        - {}
+    name: embedding
+  - class_name: Bidirectional
+    config:
+      layer:
+        class_name: CuDNNGRU
+        config:
+          activity_regularizer: null
+          bias_constraint: null
+          bias_initializer:
+            class_name: Zeros
+            config: {}
+          bias_regularizer: null
+          go_backwards: false
+          kernel_constraint: null
+          kernel_initializer:
+            class_name: VarianceScaling
+            config: {distribution: uniform, mode: fan_avg, scale: 1.0, seed: null}
+          kernel_regularizer: null
+          name: encoder1_gru
+          recurrent_constraint: null
+          recurrent_initializer:
+            class_name: Orthogonal
+            config: {gain: 1.0, seed: null}
+          recurrent_regularizer: null
+          return_sequences: true
+          return_state: false
+          stateful: false
+          trainable: true
+          units: 256
+      merge_mode: concat
+      name: encoder1
+      trainable: true
+    inbound_nodes:
+    - - - embedding
+        - 0
+        - 0
+        - {}
+    name: encoder1
+  - class_name: Dropout
+    config: {name: dropout_1, noise_shape: null, rate: 0.3, seed: null, trainable: true}
+    inbound_nodes:
+    - - - encoder1
+        - 0
+        - 0
+        - {}
+    name: dropout_1
+  - class_name: InputLayer
+    config:
+      batch_input_shape: !!python/tuple [null, 1]
+      dtype: float32
+      name: collision_energy_in
+      sparse: false
+    inbound_nodes: []
+    name: collision_energy_in
+  - class_name: InputLayer
+    config:
+      batch_input_shape: !!python/tuple [null, 6]
+      dtype: float32
+      name: precursor_charge_in
+      sparse: false
+    inbound_nodes: []
+    name: precursor_charge_in
+  - class_name: CuDNNGRU
+    config:
+      activity_regularizer: null
+      bias_constraint: null
+      bias_initializer:
+        class_name: Zeros
+        config: {}
+      bias_regularizer: null
+      go_backwards: false
+      kernel_constraint: null
+      kernel_initializer:
+        class_name: VarianceScaling
+        config: {distribution: uniform, mode: fan_avg, scale: 1.0, seed: null}
+      kernel_regularizer: null
+      name: encoder2
+      recurrent_constraint: null
+      recurrent_initializer:
+        class_name: Orthogonal
+        config: {gain: 1.0, seed: null}
+      recurrent_regularizer: null
+      return_sequences: true
+      return_state: false
+      stateful: false
+      trainable: true
+      units: 512
+    inbound_nodes:
+    - - - dropout_1
+        - 0
+        - 0
+        - {}
+    name: encoder2
+  - class_name: Concatenate
+    config: {axis: -1, name: meta_in, trainable: true}
+    inbound_nodes:
+    - - - collision_energy_in
+        - 0
+        - 0
+        - &id001 {}
+      - - precursor_charge_in
+        - 0
+        - 0
+        - *id001
+    name: meta_in
+  - class_name: Dropout
+    config: {name: dropout_2, noise_shape: null, rate: 0.3, seed: null, trainable: true}
+    inbound_nodes:
+    - - - encoder2
+        - 0
+        - 0
+        - {}
+    name: dropout_2
+  - class_name: Dense
+    config:
+      activation: linear
+      activity_regularizer: null
+      bias_constraint: null
+      bias_initializer:
+        class_name: Zeros
+        config: {}
+      bias_regularizer: null
+      kernel_constraint: null
+      kernel_initializer:
+        class_name: VarianceScaling
+        config: {distribution: uniform, mode: fan_avg, scale: 1.0, seed: null}
+      kernel_regularizer: null
+      name: meta_dense
+      trainable: true
+      units: 512
+      use_bias: true
+    inbound_nodes:
+    - - - meta_in
+        - 0
+        - 0
+        - {}
+    name: meta_dense
+  - class_name: Attention
+    config: {name: encoder_att, trainable: true}
+    inbound_nodes:
+    - - - dropout_2
+        - 0
+        - 0
+        - {}
+    name: encoder_att
+  - class_name: Dropout
+    config: {name: meta_dense_do, noise_shape: null, rate: 0.3, seed: null, trainable: true}
+    inbound_nodes:
+    - - - meta_dense
+        - 0
+        - 0
+        - {}
+    name: meta_dense_do
+  - class_name: Multiply
+    config: {name: add_meta, trainable: true}
+    inbound_nodes:
+    - - - encoder_att
+        - 0
+        - 0
+        - &id002 {}
+      - - meta_dense_do
+        - 0
+        - 0
+        - *id002
+    name: add_meta
+  - class_name: RepeatVector
+    config: {n: 29, name: repeat, trainable: true}
+    inbound_nodes:
+    - - - add_meta
+        - 0
+        - 0
+        - {}
+    name: repeat
+  - class_name: CuDNNGRU
+    config:
+      activity_regularizer: null
+      bias_constraint: null
+      bias_initializer:
+        class_name: Zeros
+        config: {}
+      bias_regularizer: null
+      go_backwards: false
+      kernel_constraint: null
+      kernel_initializer:
+        class_name: VarianceScaling
+        config: {distribution: uniform, mode: fan_avg, scale: 1.0, seed: null}
+      kernel_regularizer: null
+      name: decoder
+      recurrent_constraint: null
+      recurrent_initializer:
+        class_name: Orthogonal
+        config: {gain: 1.0, seed: null}
+      recurrent_regularizer: null
+      return_sequences: true
+      return_state: false
+      stateful: false
+      trainable: true
+      units: 512
+    inbound_nodes:
+    - - - repeat
+        - 0
+        - 0
+        - {}
+    name: decoder
+  - class_name: Dropout
+    config: {name: dropout_3, noise_shape: null, rate: 0.3, seed: null, trainable: true}
+    inbound_nodes:
+    - - - decoder
+        - 0
+        - 0
+        - {}
+    name: dropout_3
+  - class_name: Permute
+    config:
+      dims: !!python/tuple [2, 1]
+      name: permute_1
+      trainable: true
+    inbound_nodes:
+    - - - dropout_3
+        - 0
+        - 0
+        - {}
+    name: permute_1
+  - class_name: Dense
+    config:
+      activation: softmax
+      activity_regularizer: null
+      bias_constraint: null
+      bias_initializer:
+        class_name: Zeros
+        config: {}
+      bias_regularizer: null
+      kernel_constraint: null
+      kernel_initializer:
+        class_name: VarianceScaling
+        config: {distribution: uniform, mode: fan_avg, scale: 1.0, seed: null}
+      kernel_regularizer: null
+      name: dense_1
+      trainable: true
+      units: 29
+      use_bias: true
+    inbound_nodes:
+    - - - permute_1
+        - 0
+        - 0
+        - {}
+    name: dense_1
+  - class_name: Permute
+    config:
+      dims: !!python/tuple [2, 1]
+      name: permute_2
+      trainable: true
+    inbound_nodes:
+    - - - dense_1
+        - 0
+        - 0
+        - {}
+    name: permute_2
+  - class_name: Multiply
+    config: {name: multiply_1, trainable: true}
+    inbound_nodes:
+    - - - dropout_3
+        - 0
+        - 0
+        - &id003 {}
+      - - permute_2
+        - 0
+        - 0
+        - *id003
+    name: multiply_1
+  - class_name: TimeDistributed
+    config:
+      layer:
+        class_name: Dense
+        config:
+          activation: linear
+          activity_regularizer: null
+          bias_constraint: null
+          bias_initializer:
+            class_name: Zeros
+            config: {}
+          bias_regularizer: null
+          kernel_constraint: null
+          kernel_initializer:
+            class_name: VarianceScaling
+            config: {distribution: uniform, mode: fan_avg, scale: 1.0, seed: null}
+          kernel_regularizer: null
+          name: dense_2
+          trainable: true
+          units: 6
+          use_bias: true
+      name: timedense
+      trainable: true
+    inbound_nodes:
+    - - - multiply_1
+        - 0
+        - 0
+        - {}
+    name: timedense
+  - class_name: LeakyReLU
+    config: {alpha: 0.30000001192092896, name: activation, trainable: true}
+    inbound_nodes:
+    - - - timedense
+        - 0
+        - 0
+        - {}
+    name: activation
+  - class_name: Flatten
+    config: {name: out, trainable: true}
+    inbound_nodes:
+    - - - activation
+        - 0
+        - 0
+        - {}
+    name: out
+  name: model_1
+  output_layers:
+  - [out, 0, 0]
+keras_version: 2.1.1
